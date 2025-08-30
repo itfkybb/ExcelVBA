@@ -33,8 +33,10 @@ Sub FindMultiUserDevicesWithCount()
         .Range("A1").Value = "设备编号"
         .Range("B1").Value = "使用员工数量"
         .Range("C1").Value = "使用员工名单及打卡次数"
-        .Range("A1:C1").Font.Bold = True
-        .Columns("A:C").AutoFit
+        .Range("D1").Value = "设备持有人"
+        .Range("E1").Value = "代打卡员工"
+        .Range("A1:E1").Font.Bold = True
+        .Columns("A:E").AutoFit
     End With
     
     outputRow = 2 ' 从第2行开始输出结果
@@ -48,7 +50,7 @@ Sub FindMultiUserDevicesWithCount()
     ' 检查是否有数据
     If lastRow < 2 Then
         wsResult.Cells(2, 1).Value = "源数据表中没有找到有效数据。"
-        wsResult.Columns("A:C").AutoFit
+        wsResult.Columns("A:E").AutoFit
         wsResult.Activate
         Exit Sub
     End If
@@ -98,6 +100,39 @@ NextRow:
             End If
             
             wsResult.Cells(outputRow, 3).Value = nameList ' 员工名单及打卡次数
+            
+            ' 新增功能：识别设备持有人和代打卡员工
+            Dim maxCount As Long
+            Dim holder As String
+            Dim proxyEmployees As String
+            
+            ' 找出打卡次数最多的员工
+            maxCount = 0
+            holder = ""
+            For Each empKey In dict(key).Keys
+                If dict(key)(empKey) > maxCount Then
+                    maxCount = dict(key)(empKey)
+                    holder = empKey
+                End If
+            Next
+            
+            ' 构建代打卡员工名单（包含打卡次数）
+            proxyEmployees = ""
+            For Each empKey In dict(key).Keys
+                If empKey <> holder Then
+                    proxyEmployees = proxyEmployees & empKey & "(" & dict(key)(empKey) & "次), "
+                End If
+            Next
+            
+            ' 去掉最后一个逗号和空格
+            If Len(proxyEmployees) > 0 Then
+                proxyEmployees = Left(proxyEmployees, Len(proxyEmployees) - 2)
+            End If
+            
+            ' 写入持有人和代打卡员工信息
+            wsResult.Cells(outputRow, 4).Value = holder & "(" & maxCount & "次)"
+            wsResult.Cells(outputRow, 5).Value = proxyEmployees
+            
             outputRow = outputRow + 1
         End If
     Next key
@@ -109,13 +144,13 @@ NextRow:
         ' 对结果表进行排序（按员工数量降序）
         With wsResult
             If outputRow > 2 Then
-                .Range("A1:C" & outputRow - 1).Sort Key1:=.Range("B2"), Order1:=xlDescending, Header:=xlYes
+                .Range("A1:E" & outputRow - 1).Sort Key1:=.Range("B2"), Order1:=xlDescending, Header:=xlYes
             End If
         End With
     End If
     
     ' 自动调整列宽
-    wsResult.Columns("A:C").AutoFit
+    wsResult.Columns("A:E").AutoFit
     wsResult.Activate ' 切换到结果工作表
     
     MsgBox "分析完成！共找到 " & (outputRow - 2) & " 个异常设备。结果已输出到工作表【异常设备报告】。", vbInformation
